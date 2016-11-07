@@ -1,29 +1,31 @@
 # phoxi_camera
 
-ROS Package for PhoXi Scanner/Camera
+This package enables interfacing Photoneo PhoXi 3D Scanner/Camera from ROS.  
 
-if you don't have catkin workspace:
+<img src="http://www.photoneo.com/wp-content/uploads/2016/04/0003_5.png" width="640">
+
+#Install
+Clone phoxi_camera package to your catkin_ws and build as usual
 ```
-mkdir -p ~/catkin_workspace_directory/src
-cd ~/catkin_workspace_directory/src
-catkin_init_workspace
-```
-then:
-```
-cd ~/catkin_workspace_directory/src
+cd catkin_ws/src
 git clone https://github.com/photoneo/phoxi_camera.git
 cd ..
 catkin_make
-source ~/catkin_workspace_directory/devel/setup.bash
-rosrun phoxi_camera phoxi_camera_node
-rosrun phoxi_camera phoxi_camera_example.py
 ```
-In phoxi_camera_example.py change hardware identification of camera
+#Test PhoXi ROS interface without real 3D scanner
+It is possible to test PhoXi ROS interface without real hardware. 
+- Start PhoXiControl application 
+- Launch ```roslaunch phoxi_camera phoxi_camera_test.launch```
+- Now, application should connect to the camera and start to aquire example pointclouds
+- Notice that pointcloud data are also being published on ROS topics
+- Notice available ROS services that enables direct camera control
 
-Generate package:
-```
-catkin_generate_changelog
-catkin_prepare_release
-# must have git 1.x.x
-bloom-release --rosdistro <ros_distro> --track <ros_distro> phoxi_camera
-```
+#Test PhoXi ROS interface with real device
+- Start PhoXiControl application 
+- Connect to your device
+- Run Interface node ```rosrun phoxi_camera phoxi_camera ```
+- Use available ROS services to control your 3D scanner
+
+
+
+
