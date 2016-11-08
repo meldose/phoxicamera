@@ -11,7 +11,8 @@ This package enables interfacing Photoneo PhoXi 3D Scanner/Camera from ROS.
 cd catkin_ws/src
 git clone https://github.com/photoneo/phoxi_camera.git
 cd phoxi_camera
-./install_prerequisities
+chmod +x install_prerequisities.sh
+./install_prerequisities.sh
 cd ../..
 catkin_make
 ```
@@ -19,9 +20,9 @@ catkin_make
 It is possible to test PhoXi ROS interface without real hardware. 
 - Start PhoXiControl application 
 - Launch simple test example```roslaunch phoxi_camera phoxi_camera_test.launch```
-- Application should connect to the camera and start to aquire example pointclouds
+- Application should connect to the camera and start aquiring example pointclouds
 - Notice that pointcloud data are also being published on ROS topics
-- Use available ROS services to control dummy camera.
+- Use available ROS services to control the dummy camera.
 
 <img src="http://www.smartroboticsys.eu/wp-content/uploads/2016/11/PhoXiControl_01.jpg" width="640">
 
