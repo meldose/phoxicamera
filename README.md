@@ -1,31 +1,68 @@
 # phoxi_camera
 
-This package enables interfacing Photoneo PhoXi 3D Scanner/Camera from ROS.  
+This package enables interfacing Photoneo PhoXi 3D Scanner/Camera from ROS. 
 
-<img src="http://www.photoneo.com/wp-content/uploads/2016/04/0003_5.png" width="640">
+<img src="http://www.smartroboticsys.eu/wp-content/uploads/2016/11/photoneo_scanner.png" width="640">
 
-#Install
-Clone phoxi_camera package to your catkin_ws and build as usual
+###Install
+*phoxi_camera* package depends on several state-of-the-art libraries and latest version of g++ compiler. Script *install_prerequisities.sh* which is available in main repo folde install all packages and libraries required for successfull phoxi_camera compilation. Follow steps below to get phoxi_camera package working properly on your system: 
+
 ```
 cd catkin_ws/src
 git clone https://github.com/photoneo/phoxi_camera.git
-cd ..
+cd phoxi_camera
+./install_prerequisities
+cd ../..
 catkin_make
 ```
-#Test PhoXi ROS interface without real 3D scanner
+###Test PhoXi ROS interface without real 3D scanner
 It is possible to test PhoXi ROS interface without real hardware. 
 - Start PhoXiControl application 
-- Launch ```roslaunch phoxi_camera phoxi_camera_test.launch```
-- Now, application should connect to the camera and start to aquire example pointclouds
+- Launch simple test example```roslaunch phoxi_camera phoxi_camera_test.launch```
+- Application should connect to the camera and start to aquire example pointclouds
 - Notice that pointcloud data are also being published on ROS topics
-- Notice available ROS services that enables direct camera control
+- Use available ROS services to control dummy camera.
 
-#Test PhoXi ROS interface with real device
+<img src="http://www.smartroboticsys.eu/wp-content/uploads/2016/11/PhoXiControl_01.jpg" width="640">
+
+####Available ROS services
+```
+/phoxi_camera/connect_camera
+/phoxi_camera/disconnect_camera
+/phoxi_camera/get_device_list
+/phoxi_camera/get_frame
+/phoxi_camera/get_hardware_indentification
+/phoxi_camera/get_loggers
+/phoxi_camera/get_supported_capturing_modes
+/phoxi_camera/is_acquiring
+/phoxi_camera/is_connected
+/phoxi_camera/set_logger_level
+/phoxi_camera/set_parameters
+/phoxi_camera/start_acquisition
+/phoxi_camera/stop_acquisition
+/phoxi_camera/trigger_image
+/phoxi_camera_example/get_loggers
+/phoxi_camera_example/set_logger_level
+```
+
+####Available ROS topics
+```
+/phoxi_camera/confidence_map
+/phoxi_camera/normal_map
+/phoxi_camera/parameter_descriptions
+/phoxi_camera/parameter_updates
+/phoxi_camera/pointcloud
+/phoxi_camera/texture
+```
+
+
+###Test PhoXi ROS interface with real device
 - Start PhoXiControl application 
 - Connect to your device
 - Run Interface node ```rosrun phoxi_camera phoxi_camera ```
 - Use available ROS services to control your 3D scanner
 
+<img src=http://www.smartroboticsys.eu/wp-content/uploads/2016/11/PhoXiControl_02.jpg width="640">
 
-
+See phoxi_camera [ROS Wiki page](http://wiki.ros.org/phoxi_camera) for further details. 
 
