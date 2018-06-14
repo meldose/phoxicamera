@@ -4,7 +4,7 @@ This package enables interfacing Photoneo PhoXi 3D Scanner/Camera from ROS.
 
 <img src="http://photoneo.com/images/photoneo_scanner.png" width="640">
 
-###Install
+### Install
 *phoxi_camera* package depends on several state-of-the-art libraries and latest version of g++ compiler. Script *install_prerequisities.sh* which is available in main repo folde install all packages and libraries required for successfull phoxi_camera compilation. Follow steps below to get phoxi_camera package working properly on your system: 
 
 ```
@@ -16,7 +16,7 @@ chmod +x install_prerequisities.sh
 cd ../..
 catkin_make
 ```
-###Test PhoXi ROS interface without real 3D scanner
+### Test PhoXi ROS interface without real 3D scanner
 It is possible to test PhoXi ROS interface without real hardware. 
 - Start PhoXiControl application 
 - Launch simple test example```roslaunch phoxi_camera phoxi_camera_test.launch```
@@ -26,7 +26,7 @@ It is possible to test PhoXi ROS interface without real hardware.
 
 <img src="http://photoneo.com/images/PhoXiControl_01.jpg" width="640">
 
-####Available ROS services
+#### Available ROS services
 ```
 /phoxi_camera/connect_camera
 /phoxi_camera/disconnect_camera
@@ -47,7 +47,7 @@ It is possible to test PhoXi ROS interface without real hardware.
 /phoxi_camera_example/set_logger_level
 ```
 
-####Available ROS topics
+#### Available ROS topics
 ```
 /phoxi_camera/confidence_map
 /phoxi_camera/normal_map
@@ -58,7 +58,7 @@ It is possible to test PhoXi ROS interface without real hardware.
 ```
 
 
-###Test PhoXi ROS interface with real device
+### Test PhoXi ROS interface with real device
 - Start PhoXiControl application 
 - Connect to your device
 - Run Interface node ```rosrun phoxi_camera phoxi_camera ```
