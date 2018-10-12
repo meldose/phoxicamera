@@ -316,7 +316,11 @@ void RosInterface::publishFrame(pho::api::PFrame frame) {
                            frame->DepthMap.Size.Width, // width
                            frame->DepthMap.Size.Width * sizeof(float), // stepSize
                            frame->DepthMap.operator[](0));
-    std::shared_ptr<pcl::PointCloud<pcl::PointNormal>> cloud = PhoXiInterface::getPointCloudFromFrame(frame);
+
+    auto cloud = PhoXiInterface::getPointCloudFromFrame(frame);
+    dynamicReconfigureConfig.min_intensity = getMinIntensity();
+    dynamicReconfigureConfig.max_intensity = getMaxIntensity();
+    dynamicReconfigureServer.updateConfig(dynamicReconfigureConfig);
 
     sensor_msgs::PointCloud2 output_cloud;
     pcl::toROSMsg(*cloud,output_cloud);
@@ -471,6 +475,26 @@ void RosInterface::dynamicReconfigureCallback(phoxi_camera::phoxi_cameraConfig &
         try{
             this->isOk();
             scanner->OutputSettings->SendTexture = config.send_deapth_map;
+        }catch (PhoXiInterfaceException &e){
+            ROS_WARN("%s",e.what());
+        }
+    }
+
+    if (level & (1 << 13)) {
+        try{
+            this->isOk();
+            PhoXiInterface::setMinIntensity((float)config.min_intensity);
+            this->dynamicReconfigureConfig.min_intensity = config.min_intensity;
+        }catch (PhoXiInterfaceException &e){
+            ROS_WARN("%s",e.what());
+        }
+    }
+
+    if (level & (1 << 14)) {
+        try{
+            this->isOk();
+            PhoXiInterface::setMaxIntensity((float)config.max_intensity);
+            this->dynamicReconfigureConfig.max_intensity = config.max_intensity;
         }catch (PhoXiInterfaceException &e){
             ROS_WARN("%s",e.what());
         }
