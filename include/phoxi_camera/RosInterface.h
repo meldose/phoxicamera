@@ -40,8 +40,8 @@ class RosInterface : protected  PhoXiInterface {
 public:
     RosInterface();
 protected:
-    void publishFrame(pho::api::PFrame frame);
-    pho::api::PFrame getPFrame(int id = -1);
+    void publishFrame(PFramePostProcessed frame);
+    PFramePostProcessed getPFrame(int id = -1);
     int triggerImage();
     void connectCamera(std::string HWIdentification, pho::api::PhoXiTriggerMode mode = pho::api::PhoXiTriggerMode::Software, bool startAcquisition = true);
     std::string getTriggerMode(pho::api::PhoXiTriggerMode mode);

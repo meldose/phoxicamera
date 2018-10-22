@@ -224,14 +224,14 @@ TEST_F (PhoXiInterfaceTest, setTriggerMode) {
 TEST_F (PhoXiInterfaceTest, setResolution) {
 
     ASSERT_NO_THROW(phoxi_interface.setHighResolution());
-    pho::api::PFrame f = phoxi_interface.getPFrame(-1);
-    ASSERT_EQ(f->GetResolution().Width,2064);
-    ASSERT_EQ(f->GetResolution().Height,1544);
+    PFramePostProcessed f = phoxi_interface.getPFrame(-1);
+    ASSERT_EQ(f->PFrame->GetResolution().Width,2064);
+    ASSERT_EQ(f->PFrame->GetResolution().Height,1544);
 
     ASSERT_NO_THROW(phoxi_interface.setLowResolution());
     f = phoxi_interface.getPFrame(-1);
-    ASSERT_EQ(f->GetResolution().Width,1032);
-    ASSERT_EQ(f->GetResolution().Height,772);
+    ASSERT_EQ(f->PFrame->GetResolution().Width,1032);
+    ASSERT_EQ(f->PFrame->GetResolution().Height,772);
 
     // try it without connection to camera
     phoxi_interface.disconnectCamera();
@@ -370,7 +370,6 @@ TEST_F (PhoXiInterfaceTest, setCoordinateSpace) {
 
 TEST_F (PhoXiInterfaceTest, getPFrame) {
     int bad_frameID = 1123;
-    pho::api::PFrame frame;
 
     // trigger image and get PFrame
     int frameID = phoxi_interface.triggerImage();
@@ -390,7 +389,7 @@ TEST_F (PhoXiInterfaceTest, getPFrame) {
 TEST_F (PhoXiInterfaceTest, getPointCloudFromFrame) {
     ASSERT_THROW(phoxi_interface.getPointCloudFromFrame(nullptr), CorruptedFrame);
 
-    pho::api::PFrame frame;
+    PFramePostProcessed frame;
     frame = phoxi_interface.getPFrame(-1);
     ASSERT_NE(nullptr, phoxi_interface.getPointCloudFromFrame(frame));
 

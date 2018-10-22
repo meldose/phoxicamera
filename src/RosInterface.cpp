@@ -166,9 +166,9 @@ bool RosInterface::triggerImage(phoxi_camera::TriggerImage::Request &req, phoxi_
 }
 bool RosInterface::getFrame(phoxi_camera::GetFrame::Request &req, phoxi_camera::GetFrame::Response &res){
     try {
-        pho::api::PFrame frame = getPFrame(req.in);
+        PFramePostProcessed frame = getPFrame(req.in);
         publishFrame(frame);
-        if(!frame){
+        if(!frame || !frame->PFrame){
             res.success = false;
             res.message = "Null frame!";
         }
@@ -184,8 +184,8 @@ bool RosInterface::getFrame(phoxi_camera::GetFrame::Request &req, phoxi_camera::
 }
 bool RosInterface::saveFrame(phoxi_camera::SaveFrame::Request &req, phoxi_camera::SaveFrame::Response &res){
     try {
-        pho::api::PFrame frame = RosInterface::getPFrame(req.in);
-        if(!frame){
+        PFramePostProcessed frame = RosInterface::getPFrame(req.in);
+        if(!frame || !frame->PFrame){
             res.success = false;
             res.message = "Null frame!";
             return true;
@@ -201,7 +201,7 @@ bool RosInterface::saveFrame(phoxi_camera::SaveFrame::Request &req, phoxi_camera
             req.path.replace(pos,1,home);
         }
         ROS_INFO("path: %s",req.path.c_str());
-        frame->SaveAsPly(req.path);
+        frame->PFrame->SaveAsPly(req.path);
         res.message = OKRESPONSE;
         res.success = true;
     }catch (PhoXiInterfaceException &e){
@@ -248,7 +248,7 @@ bool RosInterface::getSupportedCapturingModes(phoxi_camera::GetSupportedCapturin
     return true;
 }
 
-void RosInterface::publishFrame(pho::api::PFrame frame) {
+void RosInterface::publishFrame(PFramePostProcessed frame) {
     if (!frame) {
         ROS_WARN("NUll frame!");
         return;
@@ -259,16 +259,13 @@ void RosInterface::publishFrame(pho::api::PFrame frame) {
     std_msgs::Header header;
     header.stamp = timeNow;
     header.frame_id = frameId;
-    header.seq = frame->Info.FrameIndex;
+    header.seq = frame->PFrame->Info.FrameIndex;
 
     if (scanner->OutputSettings->SendPointCloud) {
-        if (frame->PointCloud.Empty()){
+        if (frame->PFrame->PointCloud.Empty()){
             ROS_WARN("Empty point cloud!");
         } else {
             auto cloud = PhoXiInterface::getPointCloudFromFrame(frame);
-            dynamicReconfigureConfig.min_intensity = getMinIntensity();
-            dynamicReconfigureConfig.max_intensity = getMaxIntensity();
-            dynamicReconfigureServer.updateConfig(dynamicReconfigureConfig);
             sensor_msgs::PointCloud2 output_cloud;
             pcl::toROSMsg(*cloud,output_cloud);
             output_cloud.header = header;
@@ -277,7 +274,7 @@ void RosInterface::publishFrame(pho::api::PFrame frame) {
     }
 
     if (scanner->OutputSettings->SendDepthMap) {
-        if(frame->DepthMap.Empty()){
+        if(frame->PFrame->DepthMap.Empty()){
             ROS_WARN("Empty depth map!");
         } else {
             sensor_msgs::Image depth_map;
@@ -285,41 +282,37 @@ void RosInterface::publishFrame(pho::api::PFrame frame) {
             depth_map.encoding = sensor_msgs::image_encodings::TYPE_32FC1;
             sensor_msgs::fillImage(depth_map,
                                    sensor_msgs::image_encodings::TYPE_32FC1,
-                                   frame->DepthMap.Size.Height, // height
-                                   frame->DepthMap.Size.Width, // width
-                                   frame->DepthMap.Size.Width * sizeof(float), // stepSize
-                                   frame->DepthMap.operator[](0));
+                                   frame->PFrame->DepthMap.Size.Height, // height
+                                   frame->PFrame->DepthMap.Size.Width, // width
+                                   frame->PFrame->DepthMap.Size.Width * sizeof(float), // stepSize
+                                   frame->PFrame->DepthMap.operator[](0));
             depthMapPub.publish(depth_map);
         }
     }
 
     if (scanner->OutputSettings->SendTexture) {
-        if (frame->Texture.Empty()) {
+        if (frame->PFrame->Texture.Empty()) {
             ROS_WARN("Empty texture!");
         } else {
             sensor_msgs::Image texture;
             texture.header = header;
             texture.encoding = sensor_msgs::image_encodings::TYPE_32FC1;
             sensor_msgs::fillImage(texture, sensor_msgs::image_encodings::TYPE_32FC1,
-                                   frame->Texture.Size.Height, // height
-                                   frame->Texture.Size.Width, // width
-                                   frame->Texture.Size.Width * sizeof(float), // stepSize
-                                   frame->Texture.operator[](0));
+                                   frame->PFrame->Texture.Size.Height, // height
+                                   frame->PFrame->Texture.Size.Width, // width
+                                   frame->PFrame->Texture.Size.Width * sizeof(float), // stepSize
+                                   frame->PFrame->Texture.operator[](0));
             rawTexturePub.publish(texture);
 
-            cv::Mat cvGreyTexture(frame->Texture.Size.Height, frame->Texture.Size.Width, CV_32FC1, frame->Texture.operator[](0));
-            cv::normalize(cvGreyTexture, cvGreyTexture, 0, 255, CV_MINMAX);
-            cvGreyTexture.convertTo(cvGreyTexture, CV_8U);
-            cv::equalizeHist(cvGreyTexture, cvGreyTexture);
             cv::Mat cvRgbTexture;
-            cv::cvtColor(cvGreyTexture, cvRgbTexture, CV_GRAY2RGB);
+            cv::cvtColor(frame->TextureAfterPostProcessing, cvRgbTexture, CV_GRAY2RGB);
             cv_bridge::CvImage rgbTexture(header, sensor_msgs::image_encodings::BGR8, cvRgbTexture);
             rgbTexturePub.publish(rgbTexture.toImageMsg());
         }
     }
 
     if (scanner->OutputSettings->SendConfidenceMap) {
-        if (frame->ConfidenceMap.Empty()){
+        if (frame->PFrame->ConfidenceMap.Empty()){
             ROS_WARN("Empty confidence map!");
         } else {
             sensor_msgs::Image confidence_map;
@@ -327,16 +320,16 @@ void RosInterface::publishFrame(pho::api::PFrame frame) {
             confidence_map.encoding = sensor_msgs::image_encodings::TYPE_32FC1;
             sensor_msgs::fillImage(confidence_map,
                                    sensor_msgs::image_encodings::TYPE_32FC1,
-                                   frame->ConfidenceMap.Size.Height, // height
-                                   frame->ConfidenceMap.Size.Width, // width
-                                   frame->ConfidenceMap.Size.Width * sizeof(float), // stepSize
-                                   frame->ConfidenceMap.operator[](0));
+                                   frame->PFrame->ConfidenceMap.Size.Height, // height
+                                   frame->PFrame->ConfidenceMap.Size.Width, // width
+                                   frame->PFrame->ConfidenceMap.Size.Width * sizeof(float), // stepSize
+                                   frame->PFrame->ConfidenceMap.operator[](0));
             confidenceMapPub.publish(confidence_map);
         }
     }
 
     if (scanner->OutputSettings->SendNormalMap) {
-        if (frame->NormalMap.Empty()){
+        if (frame->PFrame->NormalMap.Empty()){
             ROS_WARN("Empty normal map!");
         } else {
             sensor_msgs::Image normal_map;
@@ -344,10 +337,10 @@ void RosInterface::publishFrame(pho::api::PFrame frame) {
             normal_map.encoding = sensor_msgs::image_encodings::TYPE_32FC3;
             sensor_msgs::fillImage(normal_map,
                                    sensor_msgs::image_encodings::TYPE_32FC3,
-                                   frame->NormalMap.Size.Height, // height
-                                   frame->NormalMap.Size.Width, // width
-                                   frame->NormalMap.Size.Width * sizeof(float) * 3, // stepSize
-                                   frame->NormalMap.operator[](0));
+                                   frame->PFrame->NormalMap.Size.Height, // height
+                                   frame->PFrame->NormalMap.Size.Width, // width
+                                   frame->PFrame->NormalMap.Size.Width * sizeof(float) * 3, // stepSize
+                                   frame->PFrame->NormalMap.operator[](0));
             normalMapPub.publish(normal_map);
         }
     }
@@ -523,8 +516,8 @@ void RosInterface::dynamicReconfigureCallback(phoxi_camera::phoxi_cameraConfig &
     if (level & (1 << 13)) {
         try{
             this->isOk();
-            PhoXiInterface::setMinIntensity((float)config.min_intensity);
-            this->dynamicReconfigureConfig.min_intensity = config.min_intensity;
+            PhoXiInterface::setTextureMinIntensity((float) config.texture_min_intensity);
+            this->dynamicReconfigureConfig.texture_min_intensity = config.texture_min_intensity;
         }catch (PhoXiInterfaceException &e){
             ROS_WARN("%s",e.what());
         }
@@ -533,14 +526,44 @@ void RosInterface::dynamicReconfigureCallback(phoxi_camera::phoxi_cameraConfig &
     if (level & (1 << 14)) {
         try{
             this->isOk();
-            PhoXiInterface::setMaxIntensity((float)config.max_intensity);
-            this->dynamicReconfigureConfig.max_intensity = config.max_intensity;
+            PhoXiInterface::setTextureMaxIntensity((float) config.texture_max_intensity);
+            this->dynamicReconfigureConfig.texture_max_intensity = config.texture_max_intensity;
         }catch (PhoXiInterfaceException &e){
             ROS_WARN("%s",e.what());
         }
     }
 
     if (level & (1 << 15)) {
+        try{
+            this->isOk();
+            PhoXiInterface::setTextureContrastLimitedAdaptiveHistogramEqualizationClipLimit(config.texture_contrast_limited_adaptive_histogram_equalization_clip_limit);
+            this->dynamicReconfigureConfig.texture_contrast_limited_adaptive_histogram_equalization_clip_limit = config.texture_contrast_limited_adaptive_histogram_equalization_clip_limit;
+        }catch (PhoXiInterfaceException &e){
+            ROS_WARN("%s",e.what());
+        }
+    }
+
+    if (level & (1 << 16)) {
+        try{
+            this->isOk();
+            PhoXiInterface::setTextureContrastLimitedAdaptiveHistogramEqualizationSizeX(config.texture_contrast_limited_adaptive_histogram_equalization_size_x);
+            this->dynamicReconfigureConfig.texture_contrast_limited_adaptive_histogram_equalization_size_x = config.texture_contrast_limited_adaptive_histogram_equalization_size_x;
+        }catch (PhoXiInterfaceException &e){
+            ROS_WARN("%s",e.what());
+        }
+    }
+
+    if (level & (1 << 17)) {
+        try{
+            this->isOk();
+            PhoXiInterface::setTextureContrastLimitedAdaptiveHistogramEqualizationSizeY(config.texture_contrast_limited_adaptive_histogram_equalization_size_y);
+            this->dynamicReconfigureConfig.texture_contrast_limited_adaptive_histogram_equalization_size_y = config.texture_contrast_limited_adaptive_histogram_equalization_size_y;
+        }catch (PhoXiInterfaceException &e){
+            ROS_WARN("%s",e.what());
+        }
+    }
+
+    if (level & (1 << 18)) {
         try{
             this->isOk();
             PhoXiInterface::setGeneratePointCloudWithOnlyValidPoints(config.generate_point_cloud_with_only_valid_points);
@@ -551,8 +574,8 @@ void RosInterface::dynamicReconfigureCallback(phoxi_camera::phoxi_cameraConfig &
     }
 }
 
-pho::api::PFrame RosInterface::getPFrame(int id){
-    pho::api::PFrame frame = PhoXiInterface::getPFrame(id);
+PFramePostProcessed RosInterface::getPFrame(int id){
+    PFramePostProcessed frame = PhoXiInterface::getPFrame(id);
     //update dynamic reconfigure
     dynamicReconfigureConfig.trigger_mode = pho::api::PhoXiTriggerMode::Software;
     dynamicReconfigureServer.updateConfig(dynamicReconfigureConfig);

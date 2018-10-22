@@ -3,10 +3,15 @@
 //
 
 #include "phoxi_camera/PhoXiInterface.h"
+#include <opencv2/imgproc.hpp>
 
-PhoXiInterface::PhoXiInterface() : minIntensity(0.0f), maxIntensity(0.0f), generatePointCloudWithOnlyValidPoints(false) {
-
-}
+PhoXiInterface::PhoXiInterface() :
+        textureMinIntensity(0.0f),
+        textureMaxIntensity(0.0f),
+        textureContrastLimitedAdaptiveHistogramEqualizationClipLimit(4.0),
+        textureContrastLimitedAdaptiveHistogramEqualizationSizeX(4),
+        textureContrastLimitedAdaptiveHistogramEqualizationSizeY(4),
+        generatePointCloudWithOnlyValidPoints(false) {}
 
 std::vector<std::string> PhoXiInterface::cameraList(){
     if (!phoXiFactory.isPhoXiControlRunning()){
@@ -57,53 +62,56 @@ void PhoXiInterface::disconnectCamera(){
     }
 }
 
-pho::api::PFrame PhoXiInterface::getPFrame(int id){
+PFramePostProcessed PhoXiInterface::getPFrame(int id){
     if(id < 0){
         id = this->triggerImage();
     }
     this->isOk();
-    return  scanner->GetSpecificFrame(id,10000);
+    return postProcessFrame(scanner->GetSpecificFrame(id,10000));
+}
+
+PFramePostProcessed PhoXiInterface::postProcessFrame(pho::api::PFrame frame) {
+    auto frameProcessed = PFramePostProcessed(new FramePostProcessed());
+    frameProcessed->PFrame = frame;
+    bool textureAvailable = scanner->OutputSettings->SendTexture && !frameProcessed->PFrame->Texture.Empty();
+    if (textureAvailable) {
+        frameProcessed->TextureAfterPostProcessing = cv::Mat(frameProcessed->PFrame->Texture.Size.Height, frameProcessed->PFrame->Texture.Size.Width, CV_32FC1, frameProcessed->PFrame->Texture.operator[](0));
+        bool useAutoMinMax = textureMinIntensity < 0.0f || textureMaxIntensity <= 0.0f || textureMinIntensity >= textureMaxIntensity;
+        if (useAutoMinMax) {
+            cv::normalize(frameProcessed->TextureAfterPostProcessing, frameProcessed->TextureAfterPostProcessing, 0, 255, CV_MINMAX, CV_8U);
+        } else {
+            double scale = (std::numeric_limits<uint8_t>::max()) * (1.0 / (textureMaxIntensity - textureMinIntensity));
+            double shift = textureMinIntensity - (textureMinIntensity * scale);
+            frameProcessed->TextureAfterPostProcessing.convertTo(frameProcessed->TextureAfterPostProcessing, CV_8U, scale, shift);
+        }
+        bool useTextureHistogramEqualization = textureContrastLimitedAdaptiveHistogramEqualizationSizeX > 0 && textureContrastLimitedAdaptiveHistogramEqualizationSizeY > 0;
+        if (useTextureHistogramEqualization) {
+            auto clahe = cv::createCLAHE(textureContrastLimitedAdaptiveHistogramEqualizationClipLimit, cv::Size(textureContrastLimitedAdaptiveHistogramEqualizationSizeX, textureContrastLimitedAdaptiveHistogramEqualizationSizeY));
+            clahe->apply(frameProcessed->TextureAfterPostProcessing, frameProcessed->TextureAfterPostProcessing);
+        }
+    }
+    return frameProcessed;
 }
 
 std::shared_ptr<pcl::PointCloud<pcl::PointXYZRGBNormal>> PhoXiInterface::getPointCloud() {
     return getPointCloudFromFrame(getPFrame(-1));
 }
 
-std::shared_ptr<pcl::PointCloud<pcl::PointXYZRGBNormal>> PhoXiInterface::getPointCloudFromFrame(pho::api::PFrame frame) {
-    if (!frame || !frame->Successful) {
+std::shared_ptr<pcl::PointCloud<pcl::PointXYZRGBNormal>> PhoXiInterface::getPointCloudFromFrame(PFramePostProcessed frame) {
+    if (!frame || !frame->PFrame || !frame->PFrame->Successful) {
         throw CorruptedFrame("Corrupted frame!");
     }
-    bool autoMinMaxIntensityUsed = false;
-    bool textureAvailable = scanner->OutputSettings->SendTexture && !frame->Texture.Empty();
-    if (textureAvailable) {
-        if (minIntensity < 0.0f || maxIntensity <= 0.0f || minIntensity >= maxIntensity) {
-            minIntensity = std::numeric_limits<float>::max();
-            maxIntensity = std::numeric_limits<float>::min();
-            autoMinMaxIntensityUsed = true;
-            for(int r = 0; r < frame->Texture.Size.Height; r++) {
-                for (int c = 0; c < frame->Texture.Size.Width; c++) {
-                    auto point = frame->PointCloud.At(r,c);
-                    if (point != invalidPoint) { // check only valid points
-                        float intensity = frame->Texture.At(r,c);
-                        if (intensity > maxIntensity)
-                            maxIntensity = intensity;
-                        if (intensity < minIntensity)
-                            minIntensity = intensity;
-                    }
-                }
-            }
-        }
-    }
-    bool normalMapAvailable = scanner->OutputSettings->SendNormalMap && !frame->NormalMap.Empty();
+    bool textureAvailable = !frame->TextureAfterPostProcessing.empty();
+    bool normalMapAvailable = scanner->OutputSettings->SendNormalMap && !frame->PFrame->NormalMap.Empty();
     std::shared_ptr<pcl::PointCloud<pcl::PointXYZRGBNormal>> cloud;
     if (generatePointCloudWithOnlyValidPoints)
         cloud = std::shared_ptr< pcl::PointCloud<pcl::PointXYZRGBNormal> >(new pcl::PointCloud<pcl::PointXYZRGBNormal>());
     else
-        cloud = std::shared_ptr< pcl::PointCloud<pcl::PointXYZRGBNormal> >(new pcl::PointCloud<pcl::PointXYZRGBNormal>(frame->GetResolution().Width,frame->GetResolution().Height));
-    for(int r = 0; r < frame->GetResolution().Height; r++){
-        for (int c = 0; c < frame->GetResolution().Width; c++){
-            auto point = frame->PointCloud.At(r,c);
-            bool validPoint = point != invalidPoint;
+        cloud = std::shared_ptr< pcl::PointCloud<pcl::PointXYZRGBNormal> >(new pcl::PointCloud<pcl::PointXYZRGBNormal>(frame->PFrame->GetResolution().Width,frame->PFrame->GetResolution().Height));
+    for(int r = 0; r < frame->PFrame->GetResolution().Height; r++){
+        for (int c = 0; c < frame->PFrame->GetResolution().Width; c++){
+            auto point = frame->PFrame->PointCloud.At(r,c);
+            bool validPoint = point != PhoXiInterface::invalidPoint;
             if (!generatePointCloudWithOnlyValidPoints ||
                 (generatePointCloudWithOnlyValidPoints && validPoint)) {
                 pcl::PointXYZRGBNormal pclPoint;
@@ -112,18 +120,16 @@ std::shared_ptr<pcl::PointCloud<pcl::PointXYZRGBNormal>> PhoXiInterface::getPoin
                     pclPoint.y = point.y / 1000.0;
                     pclPoint.z = point.z / 1000.0;
                     if (normalMapAvailable) {
-                        auto normal = frame->NormalMap.At(r,c);
+                        auto normal = frame->PFrame->NormalMap.At(r,c);
                         pclPoint.normal_x = normal.x;
                         pclPoint.normal_y = normal.y;
                         pclPoint.normal_z = normal.z;
                     }
                     if (textureAvailable) {
-                        float intensityMaxTruncated = std::min((float)frame->Texture.At(r,c), maxIntensity);
-                        float intensityMinTruncated = std::max(intensityMaxTruncated, minIntensity);
-                        auto intensity8Bits = (uint8_t)((intensityMinTruncated - minIntensity) / (maxIntensity - minIntensity) * std::numeric_limits<uint8_t>::max());
-                        pclPoint.r = intensity8Bits;
-                        pclPoint.g = intensity8Bits;
-                        pclPoint.b = intensity8Bits;
+                        uint8_t intensity = frame->TextureAfterPostProcessing.at<uint8_t>(r,c);
+                        pclPoint.r = intensity;
+                        pclPoint.g = intensity;
+                        pclPoint.b = intensity;
                     }
                 } else {
                     pclPoint.x = std::numeric_limits<float>::quiet_NaN();
@@ -136,10 +142,6 @@ std::shared_ptr<pcl::PointCloud<pcl::PointXYZRGBNormal>> PhoXiInterface::getPoin
                     cloud->at(c,r) = pclPoint;
             }
         }
-    }
-    if (autoMinMaxIntensityUsed) {
-        minIntensity = 0.0f;
-        maxIntensity = 0.0f;
     }
     return cloud;
 }

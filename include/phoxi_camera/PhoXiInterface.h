@@ -12,6 +12,17 @@
 #include <phoxi_camera/PhoXiException.h>
 #include <cstdint>
 #include <limits>
+#include <opencv2/core.hpp>
+
+/**
+ * PFrame with post-processed data
+ */
+class FramePostProcessed {
+    public:
+        pho::api::PFrame PFrame;
+        cv::Mat TextureAfterPostProcessing;
+};
+typedef std::shared_ptr <FramePostProcessed> PFramePostProcessed;
 
 //* PhoXiInterface
 /**
@@ -55,7 +66,11 @@ public:
     * \param id - frame id to return
     * \throw PhoXiScannerNotConnected when no scanner is connected
     */
-    pho::api::PFrame getPFrame(int id = -1);
+    PFramePostProcessed getPFrame(int id = -1);
+    /**
+     * Post processing stage of frame data
+     */
+    PFramePostProcessed postProcessFrame(pho::api::PFrame frame);
     /**
     * Get point cloud
     *
@@ -65,7 +80,7 @@ public:
     /**
     * Convert PFrame to point cloud
     */
-    std::shared_ptr<pcl::PointCloud<pcl::PointXYZRGBNormal>> getPointCloudFromFrame(pho::api::PFrame frame);
+    std::shared_ptr<pcl::PointCloud<pcl::PointXYZRGBNormal>> getPointCloudFromFrame(PFramePostProcessed frame);
     /**
     * Test if connection to PhoXi 3D Scanner is working
     *
@@ -200,26 +215,62 @@ public:
     /**
      * Gets the minimum intensity when coloring point cloud from the image texture
      */
-    float getMinIntensity() const {
-        return minIntensity;
+    float getTextureMinIntensity() const {
+        return textureMinIntensity;
     }
     /**
      * Sets the minimum intensity when coloring point cloud from the image texture
      */
-    void setMinIntensity(float minIntensity) {
-        PhoXiInterface::minIntensity = minIntensity;
+    void setTextureMinIntensity(float minIntensity) {
+        PhoXiInterface::textureMinIntensity = minIntensity;
     }
     /**
      * Gets the maximum intensity when coloring point cloud from the image texture
      */
-    float getMaxIntensity() const {
-        return maxIntensity;
+    float getTextureMaxIntensity() const {
+        return textureMaxIntensity;
     }
     /**
      * Gets the maximum intensity when coloring point cloud from the image texture
      */
-    void setMaxIntensity(float maxIntensity) {
-        PhoXiInterface::maxIntensity = maxIntensity;
+    void setTextureMaxIntensity(float maxIntensity) {
+        PhoXiInterface::textureMaxIntensity = maxIntensity;
+    }
+    /**
+     * Gets the CLAHE clip limit
+     */
+    double getTextureContrastLimitedAdaptiveHistogramEqualizationClipLimit() const {
+        return textureContrastLimitedAdaptiveHistogramEqualizationClipLimit;
+    }
+    /**
+     * Sets the CLAHE clip limit
+     */
+    void setTextureContrastLimitedAdaptiveHistogramEqualizationClipLimit(double claheClipLimit) {
+        PhoXiInterface::textureContrastLimitedAdaptiveHistogramEqualizationClipLimit = claheClipLimit;
+    }
+    /**
+     * Gets the number of bins in the X axis for CLAHE
+     */
+    int getTextureContrastLimitedAdaptiveHistogramEqualizationSizeX() const {
+        return textureContrastLimitedAdaptiveHistogramEqualizationSizeX;
+    }
+    /**
+     * Sets the number of bins in the X axis for CLAHE
+     */
+    void setTextureContrastLimitedAdaptiveHistogramEqualizationSizeX(int claheSizeX) {
+        PhoXiInterface::textureContrastLimitedAdaptiveHistogramEqualizationSizeX = claheSizeX;
+    }
+    /**
+     * Gets the number of bins in the Y axis for CLAHE
+     */
+    int getTextureContrastLimitedAdaptiveHistogramEqualizationSizeY() const {
+        return textureContrastLimitedAdaptiveHistogramEqualizationSizeY;
+    }
+    /**
+     * Sets the number of bins in the Y axis for CLAHE
+     */
+    void setTextureContrastLimitedAdaptiveHistogramEqualizationSizeY(int claheSizeY) {
+        PhoXiInterface::textureContrastLimitedAdaptiveHistogramEqualizationSizeY = claheSizeY;
     }
     /**
      * Gets the flag for specifying that only valid points should be used when
@@ -243,12 +294,12 @@ public:
 protected:
     pho::api::PPhoXi scanner;
     pho::api::PhoXiFactory phoXiFactory;
-    float minIntensity;
-    float maxIntensity;
+    float textureMinIntensity;
+    float textureMaxIntensity;
+    double textureContrastLimitedAdaptiveHistogramEqualizationClipLimit;
+    int textureContrastLimitedAdaptiveHistogramEqualizationSizeX;
+    int textureContrastLimitedAdaptiveHistogramEqualizationSizeY;
     bool generatePointCloudWithOnlyValidPoints;
-private:
-
-
 };
 
 
