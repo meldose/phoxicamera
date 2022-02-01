@@ -48,6 +48,7 @@ namespace phoxi_camera {
         std::string IPaddress;
         PhoXiConnectionStatus status;
         std::string firmwareVersion;
+        std::string variant;
     };
 }
 
