@@ -1,9 +1,10 @@
 cmake_minimum_required(VERSION 2.8.12)
 project(phoxi_camera)
 
-find_package(PhoXi REQUIRED CONFIG PATHS "$ENV{PHOXI_CONTROL_PATH}")
+find_package(PhoXi REQUIRED CONFIG PATHS "$ENV{PHOXI_CONTROL_PATH}" "/opt/Photoneo/PhoXiControl-1.7.2/" )
 find_package(Eigen3 REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system)
+find_package(PCL REQUIRED COMPONENTS common)
 
 find_package(catkin REQUIRED
   COMPONENTS
@@ -87,10 +88,11 @@ catkin_package(
     eigen_conversions
   DEPENDS
     PhoXi
+    PCL
 )
 
 add_compile_options(-w)
-add_compile_options(-std=c++11)
+add_compile_options(-std=c++14)
 add_compile_options(-fpermissive)
 add_compile_options(-pthread)
 add_compile_options(-O2)
@@ -157,6 +159,10 @@ install(TARGETS ${PROJECT_NAME}_Ros_Interface ${PROJECT_NAME}_PhoXi_Interface
 install(DIRECTORY include/${PROJECT_NAME}/
         DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION})
 
+install(DIRECTORY config launch meshes urdf
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+)
+
 if (CATKIN_ENABLE_TESTING)
     find_package(rostest REQUIRED)
     add_rostest(test/launch/phoxi_camera_ros_interfaces_exist.test)
@@ -170,3 +176,4 @@ if (CATKIN_ENABLE_TESTING)
             ${catkin_LIBRARIES}
             ${PROJECT_NAME}_Ros_Interface)
 endif()
+
