@@ -5,3 +5,4 @@ string IPaddress
 phoxi_camera/DeviceConnectionStatus status
 string firmwareVersion
 string variant
+bool isAlpha
