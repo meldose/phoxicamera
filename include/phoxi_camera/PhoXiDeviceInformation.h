@@ -49,6 +49,7 @@ namespace phoxi_camera {
         PhoXiConnectionStatus status;
         std::string firmwareVersion;
         std::string variant;
+        bool isAlpha;
     };
 }
 

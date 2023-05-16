@@ -26,6 +26,12 @@ void toPhoXiCameraDeviceInforamtion(const pho::api::PhoXiDeviceInformation& phoX
 
     phoXiCameraDeviceInformation.firmwareVersion = phoXiDeviceInformation.FirmwareVersion;
     phoXiCameraDeviceInformation.variant = phoXiDeviceInformation.Variant;
+
+    if (phoXiDeviceInformation.CheckFeature("Alpha")) {
+        phoXiCameraDeviceInformation.isAlpha = true;
+    } else {
+        phoXiCameraDeviceInformation.isAlpha = false;
+    }
 }
 
 void toPhoXiCameraDeviceInforamtion(const std::vector<pho::api::PhoXiDeviceInformation>& phoXiDeviceInformation,
