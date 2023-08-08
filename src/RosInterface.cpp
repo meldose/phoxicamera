@@ -339,9 +339,28 @@ namespace phoxi_camera {
             depthMapPub.publish(depth_map);
         }
 
-        if (frame->Texture.Empty()) {
-            ROS_WARN("Empty texture!");
-        } else {
+        if (!(frame->TextureRGB.Empty())) {
+            sensor_msgs::Image texture;
+            texture.header = header;
+            texture.encoding = sensor_msgs::image_encodings::TYPE_16UC3;
+            sensor_msgs::fillImage(texture, sensor_msgs::image_encodings::TYPE_16UC3,
+                                   frame->TextureRGB.Size.Height, // height
+                                   frame->TextureRGB.Size.Width, // width
+                                   frame->TextureRGB.Size.Width * sizeof(uint16_t), // stepSize
+                                   frame->TextureRGB.operator[](0));
+            rawTexturePub.publish(texture);
+            cv::Mat cvRgbTexture(frame->TextureRGB.Size.Height, frame->TextureRGB.Size.Width, CV_16UC3, frame->TextureRGB.operator[](0));
+            cv::normalize(cvRgbTexture, cvRgbTexture, 0, 255, CV_MINMAX);
+            cvRgbTexture.convertTo(cvRgbTexture, CV_8UC3);
+            cv::cvtColor(cvRgbTexture, cvRgbTexture, CV_RGB2HSV);
+            cv::Mat cvHSVChannelsSplit[3];
+            cv::split(cvRgbTexture, cvHSVChannelsSplit);
+            cv::equalizeHist(cvHSVChannelsSplit[2], cvHSVChannelsSplit[2]);
+            cv::merge(cvHSVChannelsSplit, 3, cvRgbTexture);
+            cv::cvtColor(cvRgbTexture, cvRgbTexture, CV_HSV2RGB);
+            cv_bridge::CvImage rgbTexture(header, sensor_msgs::image_encodings::RGB8, cvRgbTexture);
+            rgbTexturePub.publish(rgbTexture.toImageMsg());
+        } else if (!(frame->Texture.Empty())) {
             sensor_msgs::Image texture;
             texture.header = header;
             texture.encoding = sensor_msgs::image_encodings::TYPE_32FC1;
@@ -360,7 +379,10 @@ namespace phoxi_camera {
             cv::cvtColor(cvGreyTexture, cvRgbTexture, CV_GRAY2RGB);
             cv_bridge::CvImage rgbTexture(header, sensor_msgs::image_encodings::RGB8, cvRgbTexture);
             rgbTexturePub.publish(rgbTexture.toImageMsg());
+        } else {
+            ROS_WARN("Empty texture!");
         }
+
         if (frame->ConfidenceMap.Empty()) {
             ROS_WARN("Empty confidence map!");
         } else {
