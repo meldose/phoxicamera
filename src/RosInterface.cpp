@@ -24,6 +24,7 @@ namespace phoxi_camera {
         triggerImageService =nh.advertiseService("trigger_image", &RosInterface::triggerImage, this);
         getFrameService = nh.advertiseService("get_frame", &RosInterface::getFrame, this);
         saveFrameService = nh.advertiseService("save_frame", &RosInterface::saveFrame, this);
+        getScanVolumeService = nh.advertiseService("get_scanning_volume", &RosInterface::getScanningVolume, this);
         disconnectCameraService = nh.advertiseService("disconnect_camera", &RosInterface::disconnectCamera, this);
         getHardwareIdentificationService = nh.advertiseService("get_hardware_indentification", &RosInterface::getHardwareIdentification, this);
         getSupportedCapturingModesService = nh.advertiseService("get_supported_capturing_modes", &RosInterface::getSupportedCapturingModes, this);
@@ -229,6 +230,22 @@ namespace phoxi_camera {
             frame->SaveAsPly(req.path);
             res.message = OKRESPONSE;
             res.success = true;
+        } catch (PhoXiInterfaceException& e) {
+            res.success = false;
+            res.message = e.what();
+        }
+        return true;
+    }
+
+    bool RosInterface::getScanningVolume(phoxi_camera::GetScanningVolume::Request& req, phoxi_camera::GetScanningVolume::Response& res) {
+        try {
+            pho::api::PhoXiScanningVolume scanVolume = scanner->ScanningVolume;
+            pho::api::PhoXiMesh phoxiMesh = scanVolume.Mesh;
+            pcl::PolygonMesh meshPcl;
+
+            res.success = fromPhoxiMeshToPolygonMesh(phoxiMesh, meshPcl);
+            pcl_conversions::moveFromPCL(meshPcl, res.mesh);
+            res.message = OKRESPONSE;
         } catch (PhoXiInterfaceException& e) {
             res.success = false;
             res.message = e.what();
@@ -756,6 +773,31 @@ namespace phoxi_camera {
         dynamicReconfigureServer.getConfigDefault(config);
         config.__fromServer__(nh);
     }
+
+    bool RosInterface::fromPhoxiMeshToPolygonMesh(pho::api::PhoXiMesh& phoxiMesh, pcl::PolygonMesh& meshPcl) {
+        try {
+            pcl::PointCloud<pcl::PointXYZ> meshPointCloud{};
+
+            for (auto point : phoxiMesh.Vertices) {
+                meshPointCloud.push_back(pcl::PointXYZ(point.x, point.y, point.z));
+            }
+            pcl::toPCLPointCloud2(meshPointCloud, meshPcl.cloud);
+
+            const uint triangleVertices = 3;
+            uint numOfPolygons = phoxiMesh.Indices.size()/triangleVertices;
+            meshPcl.polygons.resize(numOfPolygons);
+            for (int i = 0; i < (numOfPolygons); i++) {
+                for (int v = 0; v < triangleVertices; v++) {
+                    meshPcl.polygons[i].vertices.push_back(phoxiMesh.Indices[i * triangleVertices + v]);
+                }
+            }
+        } catch (PhoXiInterfaceException& e) {
+            ROS_WARN("%s", e.what());
+            return false;
+        }
+        return true;
+    }
+
 }
 
 
