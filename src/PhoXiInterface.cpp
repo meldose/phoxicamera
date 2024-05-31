@@ -15,18 +15,11 @@ namespace phoxi_camera {
         auto dl = phoXiFactory.GetDeviceList();
         toPhoXiCameraDeviceInforamtion(dl, deviceInfo);
 
-        std::map<std::string, std::string> scannersIPs;
-
-        try {
-            scannersIPs = PhoXiInterface::getScannersIPs();
-        }
-        catch (PhoXiInterfaceException& e){}
-
         for (auto &device : deviceInfo) {
-            if (scannersIPs.empty() || (scannersIPs.find(device.hwIdentification) == scannersIPs.end())) {
-                device.IPaddress = "unknown";
-            } else {
-                device.IPaddress = scannersIPs.at(device.hwIdentification);
+            if (device.IPaddress == "loopback") {
+                device.IPaddress = "FileCamera";
+            } else if (device.IPaddress == "") {
+                device.IPaddress = "N/A";
             }
         }
 

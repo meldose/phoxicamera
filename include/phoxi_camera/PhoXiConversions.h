@@ -14,6 +14,7 @@ void toPhoXiCameraDeviceInforamtion(const pho::api::PhoXiDeviceInformation& phoX
     phoXiCameraDeviceInformation.type = phoxi_camera::PhoXiDeviceInformation::PhoXiDeviceType(
             (int)phoXiDeviceInformation.Type);
     phoXiCameraDeviceInformation.hwIdentification = phoXiDeviceInformation.HWIdentification;
+    phoXiCameraDeviceInformation.IPaddress = phoXiDeviceInformation.IPv4;
     if (phoXiDeviceInformation.Status.Ready) {
         phoXiCameraDeviceInformation.status =  phoxi_camera::PhoXiDeviceInformation::PhoXiConnectionStatus::Ready;
     } else {
