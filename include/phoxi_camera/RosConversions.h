@@ -19,6 +19,7 @@ void phoXiDeviceInforamtionToRosMsg(const phoxi_camera::PhoXiDeviceInformation& 
     deviceInformationMsg.firmwareVersion = phoXiDeviceInformation.firmwareVersion;
     deviceInformationMsg.variant = phoXiDeviceInformation.variant;
     deviceInformationMsg.isAlpha = phoXiDeviceInformation.isAlpha;
+    deviceInformationMsg.isColor = phoXiDeviceInformation.isColor;
 }
 
 void phoXiDeviceInforamtionToRosMsg(const std::vector<phoxi_camera::PhoXiDeviceInformation>& phoXiDeviceInformation,

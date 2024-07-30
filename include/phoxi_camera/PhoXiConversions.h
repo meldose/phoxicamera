@@ -28,10 +28,14 @@ void toPhoXiCameraDeviceInforamtion(const pho::api::PhoXiDeviceInformation& phoX
     phoXiCameraDeviceInformation.firmwareVersion = phoXiDeviceInformation.FirmwareVersion;
     phoXiCameraDeviceInformation.variant = phoXiDeviceInformation.Variant;
 
+    phoXiCameraDeviceInformation.isAlpha = false;
+    phoXiCameraDeviceInformation.isColor = false;
+
     if (phoXiDeviceInformation.CheckFeature("Alpha")) {
         phoXiCameraDeviceInformation.isAlpha = true;
-    } else {
-        phoXiCameraDeviceInformation.isAlpha = false;
+    }
+    if (phoXiDeviceInformation.CheckFeature("Color")) {
+        phoXiCameraDeviceInformation.isColor = true;
     }
 }
 

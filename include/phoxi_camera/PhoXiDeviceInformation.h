@@ -50,6 +50,7 @@ namespace phoxi_camera {
         std::string firmwareVersion;
         std::string variant;
         bool isAlpha;
+        bool isColor;
     };
 }
 
