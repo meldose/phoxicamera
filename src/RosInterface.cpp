@@ -24,6 +24,7 @@ namespace phoxi_camera {
         triggerImageService =nh.advertiseService("trigger_image", &RosInterface::triggerImage, this);
         getFrameService = nh.advertiseService("get_frame", &RosInterface::getFrame, this);
         saveFrameService = nh.advertiseService("save_frame", &RosInterface::saveFrame, this);
+        getScanVolumeService = nh.advertiseService("get_scanning_volume", &RosInterface::getScanningVolume, this);
         disconnectCameraService = nh.advertiseService("disconnect_camera", &RosInterface::disconnectCamera, this);
         getHardwareIdentificationService = nh.advertiseService("get_hardware_indentification", &RosInterface::getHardwareIdentification, this);
         getSupportedCapturingModesService = nh.advertiseService("get_supported_capturing_modes", &RosInterface::getSupportedCapturingModes, this);
@@ -236,6 +237,22 @@ namespace phoxi_camera {
         return true;
     }
 
+    bool RosInterface::getScanningVolume(phoxi_camera::GetScanningVolume::Request& req, phoxi_camera::GetScanningVolume::Response& res) {
+        try {
+            pho::api::PhoXiScanningVolume scanVolume = scanner->ScanningVolume;
+            pho::api::PhoXiMesh phoxiMesh = scanVolume.Mesh;
+            pcl::PolygonMesh meshPcl;
+
+            res.success = fromPhoxiMeshToPolygonMesh(phoxiMesh, meshPcl);
+            pcl_conversions::moveFromPCL(meshPcl, res.mesh);
+            res.message = OKRESPONSE;
+        } catch (PhoXiInterfaceException& e) {
+            res.success = false;
+            res.message = e.what();
+        }
+        return true;
+    }
+
     bool RosInterface::disconnectCamera(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res) {
         try {
             PhoXiInterface::disconnectCamera();
@@ -339,9 +356,28 @@ namespace phoxi_camera {
             depthMapPub.publish(depth_map);
         }
 
-        if (frame->Texture.Empty()) {
-            ROS_WARN("Empty texture!");
-        } else {
+        if (!(frame->TextureRGB.Empty())) {
+            sensor_msgs::Image texture;
+            texture.header = header;
+            texture.encoding = sensor_msgs::image_encodings::TYPE_16UC3;
+            sensor_msgs::fillImage(texture, sensor_msgs::image_encodings::TYPE_16UC3,
+                                   frame->TextureRGB.Size.Height, // height
+                                   frame->TextureRGB.Size.Width, // width
+                                   frame->TextureRGB.Size.Width * sizeof(uint16_t), // stepSize
+                                   frame->TextureRGB.operator[](0));
+            rawTexturePub.publish(texture);
+            cv::Mat cvRgbTexture(frame->TextureRGB.Size.Height, frame->TextureRGB.Size.Width, CV_16UC3, frame->TextureRGB.operator[](0));
+            cv::normalize(cvRgbTexture, cvRgbTexture, 0, 255, CV_MINMAX);
+            cvRgbTexture.convertTo(cvRgbTexture, CV_8UC3);
+            cv::cvtColor(cvRgbTexture, cvRgbTexture, CV_RGB2HSV);
+            cv::Mat cvHSVChannelsSplit[3];
+            cv::split(cvRgbTexture, cvHSVChannelsSplit);
+            cv::equalizeHist(cvHSVChannelsSplit[2], cvHSVChannelsSplit[2]);
+            cv::merge(cvHSVChannelsSplit, 3, cvRgbTexture);
+            cv::cvtColor(cvRgbTexture, cvRgbTexture, CV_HSV2RGB);
+            cv_bridge::CvImage rgbTexture(header, sensor_msgs::image_encodings::RGB8, cvRgbTexture);
+            rgbTexturePub.publish(rgbTexture.toImageMsg());
+        } else if (!(frame->Texture.Empty())) {
             sensor_msgs::Image texture;
             texture.header = header;
             texture.encoding = sensor_msgs::image_encodings::TYPE_32FC1;
@@ -360,7 +396,10 @@ namespace phoxi_camera {
             cv::cvtColor(cvGreyTexture, cvRgbTexture, CV_GRAY2RGB);
             cv_bridge::CvImage rgbTexture(header, sensor_msgs::image_encodings::RGB8, cvRgbTexture);
             rgbTexturePub.publish(rgbTexture.toImageMsg());
+        } else {
+            ROS_WARN("Empty texture!");
         }
+
         if (frame->ConfidenceMap.Empty()) {
             ROS_WARN("Empty confidence map!");
         } else {
@@ -734,6 +773,31 @@ namespace phoxi_camera {
         dynamicReconfigureServer.getConfigDefault(config);
         config.__fromServer__(nh);
     }
+
+    bool RosInterface::fromPhoxiMeshToPolygonMesh(pho::api::PhoXiMesh& phoxiMesh, pcl::PolygonMesh& meshPcl) {
+        try {
+            pcl::PointCloud<pcl::PointXYZ> meshPointCloud{};
+
+            for (auto point : phoxiMesh.Vertices) {
+                meshPointCloud.push_back(pcl::PointXYZ(point.x, point.y, point.z));
+            }
+            pcl::toPCLPointCloud2(meshPointCloud, meshPcl.cloud);
+
+            const uint triangleVertices = 3;
+            uint numOfPolygons = phoxiMesh.Indices.size()/triangleVertices;
+            meshPcl.polygons.resize(numOfPolygons);
+            for (int i = 0; i < (numOfPolygons); i++) {
+                for (int v = 0; v < triangleVertices; v++) {
+                    meshPcl.polygons[i].vertices.push_back(phoxiMesh.Indices[i * triangleVertices + v]);
+                }
+            }
+        } catch (PhoXiInterfaceException& e) {
+            ROS_WARN("%s", e.what());
+            return false;
+        }
+        return true;
+    }
+
 }
 
 

@@ -1,0 +1,4 @@
+---
+pcl_msgs/PolygonMesh mesh
+string message
+bool success

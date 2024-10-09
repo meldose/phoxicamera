@@ -41,6 +41,7 @@
 #include <phoxi_camera/SaveLastFrame.h>
 #include <phoxi_camera/GetHardwareIdentification.h>
 #include <phoxi_camera/GetSupportedCapturingModes.h>
+#include <phoxi_camera/GetScanningVolume.h>
 #include <phoxi_camera/SetCoordinatesSpace.h>
 #include <phoxi_camera/SetTransformationMatrix.h>
 #include <phoxi_camera/GetString.h>
@@ -74,6 +75,8 @@ namespace phoxi_camera {
 
         void getDefaultDynamicReconfigureConfig(phoxi_camera::phoxi_cameraConfig& config);
 
+        bool fromPhoxiMeshToPolygonMesh(pho::api::PhoXiMesh& phoxiMesh, pcl::PolygonMesh& meshPcl);
+
         std::string frameId;
     private:
         bool getDeviceList(phoxi_camera::GetDeviceList::Request& req, phoxi_camera::GetDeviceList::Response& res);
@@ -101,6 +104,8 @@ namespace phoxi_camera {
         bool getFrame(phoxi_camera::GetFrame::Request& req, phoxi_camera::GetFrame::Response& res);
 
         bool saveFrame(phoxi_camera::SaveFrame::Request& req, phoxi_camera::SaveFrame::Response& res);
+
+        bool getScanningVolume(phoxi_camera::GetScanningVolume::Request& req, phoxi_camera::GetScanningVolume::Response& res);
 
         bool disconnectCamera(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
 
@@ -151,6 +156,7 @@ namespace phoxi_camera {
         ros::ServiceServer getFrameService;
         ros::ServiceServer saveFrameService;
         ros::ServiceServer saveLastFrameService;
+        ros::ServiceServer getScanVolumeService;
         ros::ServiceServer disconnectCameraService;
         ros::ServiceServer getHardwareIdentificationService;
         ros::ServiceServer getSupportedCapturingModesService;
