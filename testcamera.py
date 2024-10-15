@@ -10,25 +10,31 @@ def capture_image(phoXi_device):
     """Function to capture an image and process the point cloud."""
     logging.info("Capturing image...")
     frame = Frame()
-    phoXi_device.TriggerFrame(frame)
-    
-    if frame:
-            logging.info("Image captured successfully.")
+    try:
+        phoXi_device.TriggerFrame(frame)
+    except PhoXiError as e:
+        logging.error(f"Error capturing image: {e}")
+        return
 
-            # Access point cloud data from the captured frame
-            point_cloud = frame.GetPointCloud()
-            logging.info(f"Point cloud has {len(point_cloud)} points.")
+    if frame:  # checking whether the frame is captured or not.
+        logging.info("Image captured successfully.")
 
-            # Example: Save point cloud to a PLY file
-            save_path = "captured_point_cloud.ply"
-            success = frame.SaveAsPLY(save_path)
-            if success:
-                logging.info(f"Point cloud saved to {save_path}.")
-            else:
-                logging.error("Failed to save point cloud.")
+        # Access point cloud data from the captured frame
+        point_cloud = frame.GetPointCloud()
+        logging.info(f"Point cloud has {len(point_cloud)} points.")
+
+        # Example: Save point cloud to a PLY file
+        save_path = "captured_point_cloud.ply"  # full file path with file extension
+        success = frame.SaveAsPLY(save_path)
+        if success:  # if the point cloud is saved
+            logging.info(f"Point cloud saved to {save_path}.")
+        else:
+            logging.error("Failed to save point cloud.")
     else:
-            logging.error("Failed to capture image.")
+        logging.error("Failed to capture image.")
 
+
+# Defining main function to run the program
 def main():
     try:
         # Initialize the PhoXi Control Interface
@@ -38,7 +44,7 @@ def main():
         # Get a list of available devices
         devices = phoXi.GetDeviceList()
 
-        if not devices:
+        if not devices:  # if devices is not found
             logging.error("No PhoXi device found.")
             return
 
@@ -81,8 +87,6 @@ def main():
         phoXi_device.StartAcquisition()
         logging.info("Acquisition started.")
 
-        
-
         # Main loop to wait for key presses
         try:
             while True:
@@ -98,14 +102,17 @@ def main():
         finally:
             # Stop acquisition and disconnect device if connected
             try:
-                if 'phoXi_device' in locals():
+                if 'phoXi_device' in locals():  # checking if the phoXi_device is in the locals()
                     if phoXi_device.isAcquiring():
                         phoXi_device.StopAcquisition()
                         logging.info("Acquisition stopped.")
-                    phoXi_device.Disconnect()
+                    phoXi_device.Disconnect()  # if not disconnect the device
                     logging.info("Device disconnected.")
-            except Exception as e:
+            except Exception as e:  # as an exception if the device is not found.
                 logging.exception(f"Error during cleanup: {e}")
+
+    except PhoXiError as e:
+        logging.error(f"Error during program execution: {e}")
 
 
 if __name__ == "__main__":
