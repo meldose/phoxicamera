@@ -101,16 +101,12 @@ def main():
             logging.info("Ctrl+C pressed. Exiting...")
         finally:
             # Stop acquisition and disconnect device if connected
-            try:
-                if 'phoXi_device' in locals():  # checking if the phoXi_device is in the locals()
-                    if phoXi_device.isAcquiring():
-                        phoXi_device.StopAcquisition()
-                        logging.info("Acquisition stopped.")
-                    phoXi_device.Disconnect()  # if not disconnect the device
-                    logging.info("Device disconnected.")
-            except Exception as e:  # as an exception if the device is not found.
-                logging.exception(f"Error during cleanup: {e}")
-
+            if 'phoXi_device' in locals():  # checking if the phoXi_device is in the locals()
+                if phoXi_device.isAcquiring():
+                    phoXi_device.StopAcquisition()
+                    logging.info("Acquisition stopped.")
+                phoXi_device.Disconnect()  # if not disconnect the device
+                logging.info("Device disconnected.")
     except PhoXiError as e:
         logging.error(f"Error during program execution: {e}")
 
