@@ -12,6 +12,7 @@ find_package(catkin REQUIRED
     std_msgs
     sensor_msgs
     pcl_ros
+    pcl_msgs
     dynamic_reconfigure
     diagnostic_updater
     geometry_msgs
@@ -49,6 +50,7 @@ add_service_files(
     GetBool.srv
     GetFrame.srv
     GetHardwareIdentification.srv
+    GetScanningVolume.srv
     GetSupportedCapturingModes.srv
     SaveFrame.srv
     SaveLastFrame.srv
@@ -61,6 +63,7 @@ generate_messages(
   DEPENDENCIES
     std_msgs
     sensor_msgs
+    pcl_msgs
 )
 
 generate_dynamic_reconfigure_options(
